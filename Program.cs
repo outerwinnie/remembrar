@@ -11,7 +11,8 @@ class Program
     private string _youtubeCsv;
     private string _guildId;
     private string _videoProgress;
-    private int _currentId = 1;  // Start at ID 1
+    private string _bookmarkedVideos;
+    private int _currentId = 1; // Start at ID 1
 
     public static Task Main(string[] args) => new Program().MainAsync();
 
@@ -26,11 +27,12 @@ class Program
         _client.Ready += ReadyAsync;
         _client.SlashCommandExecuted += SlashCommandExecutedAsync;
         _client.InteractionCreated += InteractionCreatedAsync;
-        
+
         _discordToken = Environment.GetEnvironmentVariable("DISCORD_BOT_TOKEN") ?? throw new InvalidOperationException();
         _youtubeCsv = Environment.GetEnvironmentVariable("YOUTUBE_CSV") ?? throw new InvalidOperationException();
         _guildId = Environment.GetEnvironmentVariable("GUILD_ID") ?? throw new InvalidOperationException();
         _videoProgress = Environment.GetEnvironmentVariable("VIDEO_PROGRESS") ?? throw new InvalidOperationException();
+        _bookmarkedVideos = Environment.GetEnvironmentVariable("BOOKMARKED_VIDEOS") ?? throw new InvalidOperationException();
 
         // Load video data from CSV
         LoadVideoData();
@@ -38,7 +40,7 @@ class Program
         await _client.LoginAsync(TokenType.Bot, _discordToken);
         await _client.StartAsync();
 
-        await Task.Delay(-1);  // Keep the bot running
+        await Task.Delay(-1); // Keep the bot running
     }
 
     private async Task LogAsync(LogMessage log)
@@ -85,7 +87,7 @@ class Program
                 using (var writer = new StreamWriter(_videoProgress))
                 {
                     var csvWriter = new CsvWriter(writer, CultureInfo.InvariantCulture);
-                    csvWriter.WriteRecords(new List<UserProgress>());  // Create empty file
+                    csvWriter.WriteRecords(new List<UserProgress>()); // Create empty file
                 }
             }
 
@@ -100,13 +102,13 @@ class Program
             }
             else
             {
-                _currentId = 1;  // Default to video ID 1 if no record is found
+                _currentId = 1; // Default to video ID 1 if no record is found
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error loading state: {ex.Message}");
-            _currentId = 1;  // Default to video ID 1 if an error occurs
+            _currentId = 1; // Default to video ID 1 if an error occurs
         }
     }
 
@@ -122,7 +124,7 @@ class Program
                 using (var writer = new StreamWriter(_videoProgress))
                 {
                     var csvWriter = new CsvWriter(writer, CultureInfo.InvariantCulture);
-                    csvWriter.WriteRecords(new List<UserProgress>());  // Create empty file
+                    csvWriter.WriteRecords(new List<UserProgress>()); // Create empty file
                 }
             }
 
@@ -161,8 +163,8 @@ class Program
 
     private async Task SlashCommandExecutedAsync(SocketSlashCommand command)
     {
-        ulong userId = command.User.Id;  // Get the user ID
-        LoadState(userId);  // Load the user's progress
+        ulong userId = command.User.Id; // Get the user ID
+        LoadState(userId); // Load the user's progress
 
         if (command.CommandName == "encender")
         {
@@ -189,9 +191,55 @@ class Program
         }
     }
 
+    private async Task SaveBookmarkAsync(int videoId, string videoUrl)
+    {
+        try
+        {
+            List<Bookmark> bookmarks;
+
+            // If the bookmarks file exists, read it; otherwise, create a new list
+            if (File.Exists(_bookmarkedVideos))
+            {
+                using var reader = new StreamReader(_bookmarkedVideos);
+                using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
+                bookmarks = csv.GetRecords<Bookmark>().ToList();
+            }
+            else
+            {
+                bookmarks = new List<Bookmark>();
+            }
+
+            // Check if the bookmark already exists
+            var existingBookmark = bookmarks.FirstOrDefault(b => b.VideoId == videoId && b.Url == videoUrl);
+            if (existingBookmark != null)
+            {
+                Console.WriteLine($"Bookmark for video {videoId} already exists. Skipping.");
+                return;  // Skip saving if the bookmark already exists
+            }
+
+            // Add the new bookmark
+            bookmarks.Add(new Bookmark
+            {
+                VideoId = videoId,
+                Url = videoUrl
+            });
+
+            // Write the updated bookmarks list to the file
+            using var writer = new StreamWriter(_bookmarkedVideos);
+            using var csvWriter = new CsvWriter(writer, CultureInfo.InvariantCulture);
+            await csvWriter.WriteRecordsAsync(bookmarks);
+
+            Console.WriteLine($"Bookmark for video {videoId} saved.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving bookmark: {ex.Message}");
+        }
+    }
+    
     private async Task ButtonExecuted(SocketMessageComponent component)
     {
-        ulong userId = component.User.Id;  // Get the user ID
+        ulong userId = component.User.Id; // Get the user ID
         string messageContent;
 
         if (component.Data.CustomId == "video_back" && _currentId > 1)
@@ -203,13 +251,23 @@ class Program
             _currentId++;
         }
 
+        // Handle the "⭐ Guardar" button
+        if (component.Data.CustomId == "video_bookmark")
+        {
+            var videoUrl = _videoData[_currentId];
+            await SaveBookmarkAsync(_currentId, videoUrl); // Save the bookmark
+            messageContent = $"Video {_currentId} has been bookmarked!";
+        }
+        else
+        {
+            var defaultUrl = _videoData[_currentId];
+            var modifiedUrlDefault = defaultUrl.Replace("www.youtube.com", "inv.nadeko.net");
+
+            messageContent = $"**Video {_currentId}:**\n{modifiedUrlDefault}";
+        }
+
         // Save state after any button press
         await SaveStateAsync(userId);
-
-        var defaultUrl = _videoData[_currentId];
-        var modifiedUrlDefault = defaultUrl.Replace("www.youtube.com", "inv.nadeko.net");
-
-        messageContent = $"**Video {_currentId}:**\n{modifiedUrlDefault}";
 
         var navigationButtons = new ComponentBuilder()
             .WithButton("⬅️ Anterior", "video_back", ButtonStyle.Primary)
@@ -230,4 +288,10 @@ public class UserProgress
 {
     public ulong UserId { get; set; }
     public int CurrentId { get; set; }
+}
+
+public class Bookmark
+{
+    public int VideoId { get; set; }
+    public string Url { get; set; }
 }
