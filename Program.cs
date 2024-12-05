@@ -31,7 +31,7 @@ class Program
         // Load saved video ID state
         LoadState();
 
-        await _client.LoginAsync(TokenType.Bot, "");
+        await _client.LoginAsync(TokenType.Bot, "XXX");
         await _client.StartAsync();
 
         LoadVideoData();
@@ -106,13 +106,13 @@ class Program
             var modifiedUrl = originalUrl.Replace("www.youtube.com", "inv.nadeko.net");
 
             var components = new ComponentBuilder()
-                .WithButton("⬅️ Back", "video_back", ButtonStyle.Primary)
-                .WithButton("Next ➡️", "video_next", ButtonStyle.Primary)
-                .WithButton("⭐ Bookmark", "video_bookmark", ButtonStyle.Secondary)
+                .WithButton("⬅️ Anterior", "video_back", ButtonStyle.Primary)
+                .WithButton("Siguiente ➡️", "video_next", ButtonStyle.Primary)
+                .WithButton("⭐ Guardar", "video_bookmark", ButtonStyle.Secondary)
                 .Build();
 
             // Add newline before the link
-            var messageContent = $"**Video ID {_currentId}:**\n{modifiedUrl}";
+            var messageContent = $"**Video {_currentId}:**\n{modifiedUrl}";
 
             await command.RespondAsync(messageContent, components: components);
         }
@@ -178,9 +178,7 @@ class Program
             await component.Channel.SendMessageAsync(messageContent, components: navigationComponents);
             return;
         }
-
-        else if (component.Data.CustomId != "video_bookmarked")
-        {
+        
             // Default case for handling back, next, or other button presses
             var defaultUrl = _videoData[_currentId];  // Renamed variable to avoid conflict
             var modifiedUrlDefault = defaultUrl.Replace("www.youtube.com", "inv.nadeko.net");
@@ -205,5 +203,4 @@ class Program
                 msg.Components = navigationButtons;  // Re-add the navigation buttons
             });
         }
-    }
 }
