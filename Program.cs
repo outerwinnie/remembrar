@@ -90,8 +90,8 @@ class Program
                 .Build();
 
             var components = new ComponentBuilder()
-                .WithButton("⬅️ Back", "video_back", ButtonStyle.Primary)
-                .WithButton("Next ➡️", "video_next", ButtonStyle.Primary)
+                .WithButton("⬅️ Anterior", "video_back", ButtonStyle.Primary)
+                .WithButton("Siguiente ➡️", "video_next", ButtonStyle.Primary)
                 .Build();
 
             await command.RespondAsync(embed: embed, components: components);
@@ -108,36 +108,25 @@ class Program
 
     private async Task ButtonExecuted(SocketMessageComponent component)
     {
-        bool updated = false;
-
         if (component.Data.CustomId == "video_back" && _currentId > 1)
         {
             _currentId--;
-            updated = true;
         }
         else if (component.Data.CustomId == "video_next" && _currentId < _videoData.Count)
         {
             _currentId++;
-            updated = true;
         }
 
-        if (updated)
-        {
-            var videoUrl = _videoData[_currentId];
-            var embed = new EmbedBuilder()
-                .WithTitle($"Video ID: {_currentId}")
-                .WithDescription("Use the buttons below to navigate through videos.")
-                .Build();
+        var originalUrl = _videoData[_currentId];
 
-            await component.UpdateAsync(msg =>
-            {
-                msg.Embed = embed;
-                msg.Content = videoUrl; // Display plain URL for preview
-            });
-        }
-        else
+        // Replace "www.youtube.com" with "inv.nadeko.net"
+        var modifiedUrl = originalUrl.Replace("www.youtube.com", "inv.nadeko.net");
+
+        // Update the message with the modified URL
+        await component.UpdateAsync(msg =>
         {
-            await component.RespondAsync("No more videos in this direction.", ephemeral: true);
-        }
+            msg.Content = modifiedUrl;  // Use modified URL for posting
+            msg.Embed = null;           // No embed to ensure preview generation
+        });
     }
 }

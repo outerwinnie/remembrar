@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Winnie\\RiderProjects\\Remembrar\\Remembrar\\Remembrar.csproj": {}
+    "C:\\Users\\Winnie\\RiderProjects\\Remembrar\\Remembrar.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Winnie\\RiderProjects\\Remembrar\\Remembrar\\Remembrar.csproj": {
+    "C:\\Users\\Winnie\\RiderProjects\\Remembrar\\Remembrar.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Winnie\\RiderProjects\\Remembrar\\Remembrar\\Remembrar.csproj",
+        "projectUniqueName": "C:\\Users\\Winnie\\RiderProjects\\Remembrar\\Remembrar.csproj",
         "projectName": "Remembrar",
-        "projectPath": "C:\\Users\\Winnie\\RiderProjects\\Remembrar\\Remembrar\\Remembrar.csproj",
+        "projectPath": "C:\\Users\\Winnie\\RiderProjects\\Remembrar\\Remembrar.csproj",
         "packagesPath": "C:\\Users\\Winnie\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Winnie\\RiderProjects\\Remembrar\\Remembrar\\obj\\",
+        "outputPath": "C:\\Users\\Winnie\\RiderProjects\\Remembrar\\obj\\",
         "projectStyle": "PackageReference",
         "UsingMicrosoftNETSdk": false,
         "configFilePaths": [
