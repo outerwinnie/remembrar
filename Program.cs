@@ -31,7 +31,7 @@ class Program
         // Load saved video ID state
         LoadState();
 
-        await _client.LoginAsync(TokenType.Bot, "xxx");
+        await _client.LoginAsync(TokenType.Bot, "");
         await _client.StartAsync();
 
         LoadVideoData();
@@ -99,7 +99,6 @@ class Program
         {
             if (command.User.Id != 154537457008902144)  // Replace with your specific user ID
             {
-                await command.RespondAsync("You do not have permission to use this command.", ephemeral: true);
                 return;
             }
 
@@ -139,6 +138,11 @@ class Program
         {
             _currentId++;
         }
+        else if (component.Data.CustomId == "video_bookmarked")
+        {
+            await component.RespondAsync("Ya esta guardado", ephemeral: true);
+            Console.WriteLine("Video bookmarked");
+        }
         else if (component.Data.CustomId == "video_bookmark")
         {
             // When the user clicks "Bookmark"
@@ -153,7 +157,7 @@ class Program
 
             // Create the components with a disabled "⭐ Bookmarked" button
             var bookmarkComponents = new ComponentBuilder()
-                .WithButton("⭐ Guardado", "video_bookmark", ButtonStyle.Secondary)
+                .WithButton("⭐ Guardado", "video_bookmarked", ButtonStyle.Secondary)
                 .Build();
 
             // Update the current message without the navigation buttons
@@ -175,28 +179,31 @@ class Program
             return;
         }
 
-        // Default case for handling back, next, or other button presses
-        var defaultUrl = _videoData[_currentId];  // Renamed variable to avoid conflict
-        var modifiedUrlDefault = defaultUrl.Replace("www.youtube.com", "inv.nadeko.net");
-
-        // Save the current state to persist the video ID
-        await SaveStateAsync();
-
-        // Add newline before the link
-        messageContent = $"**Video {_currentId}:**\n{modifiedUrlDefault}";
-
-        // Send the updated message with the navigation buttons
-        var navigationButtons = new ComponentBuilder()
-            .WithButton("⬅️ Anterior", "video_back", ButtonStyle.Primary)
-            .WithButton("Siguiente ➡️", "video_next", ButtonStyle.Primary)
-            .WithButton("⭐ Guardar", "video_bookmark", ButtonStyle.Secondary)
-            .Build();
-
-        await component.UpdateAsync(msg =>
+        else if (component.Data.CustomId != "video_bookmarked")
         {
-            msg.Content = messageContent;
-            msg.Embed = null;
-            msg.Components = navigationButtons;  // Re-add the navigation buttons
-        });
+            // Default case for handling back, next, or other button presses
+            var defaultUrl = _videoData[_currentId];  // Renamed variable to avoid conflict
+            var modifiedUrlDefault = defaultUrl.Replace("www.youtube.com", "inv.nadeko.net");
+
+            // Save the current state to persist the video ID
+            await SaveStateAsync();
+
+            // Add newline before the link
+            messageContent = $"**Video {_currentId}:**\n{modifiedUrlDefault}";
+
+            // Send the updated message with the navigation buttons
+            var navigationButtons = new ComponentBuilder()
+                .WithButton("⬅️ Anterior", "video_back", ButtonStyle.Primary)
+                .WithButton("Siguiente ➡️", "video_next", ButtonStyle.Primary)
+                .WithButton("⭐ Guardar", "video_bookmark", ButtonStyle.Secondary)
+                .Build();
+
+            await component.UpdateAsync(msg =>
+            {
+                msg.Content = messageContent;
+                msg.Embed = null;
+                msg.Components = navigationButtons;  // Re-add the navigation buttons
+            });
+        }
     }
 }
