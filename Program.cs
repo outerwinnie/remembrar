@@ -2,19 +2,23 @@ using Discord;
 using Discord.WebSocket;
 using CsvHelper;
 using System.Globalization;
-using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
-using System.Collections.Generic;
+
+public class Bookmark
+{
+    public int VideoId { get; set; }
+    public string Url { get; set; }
+}
 
 class Program
 {
     private readonly DiscordSocketClient _client;
     private Dictionary<int, string> _videoData;
-    private string _stateFilePath = "video_state.txt";  // File to store the current ID
+    private string _stateFilePath;  // File to store the current ID
     private string _discordToken;
     private string _youtubeCsv;
     private string _guildId;
+    private string _bookmarkedVideos;
     private int _currentId = 1;  // Start at ID 1
 
     public static Task Main(string[] args) => new Program().MainAsync();
@@ -30,11 +34,12 @@ class Program
         _client.Ready += ReadyAsync;
         _client.SlashCommandExecuted += SlashCommandExecutedAsync;
         _client.InteractionCreated += InteractionCreatedAsync;
-        
+
         _stateFilePath = Environment.GetEnvironmentVariable("STATE_FILE_PATH") ?? throw new InvalidOperationException();
         _discordToken = Environment.GetEnvironmentVariable("DISCORD_BOT_TOKEN") ?? throw new InvalidOperationException();
         _youtubeCsv = Environment.GetEnvironmentVariable("YOUTUBE_CSV") ?? throw new InvalidOperationException();
         _guildId = Environment.GetEnvironmentVariable("GUILD_ID") ?? throw new InvalidOperationException();
+        _bookmarkedVideos = Environment.GetEnvironmentVariable("BOOKMARKED_VIDEOS") ?? throw new InvalidOperationException();
 
         // Load saved video ID state
         LoadState();
@@ -65,7 +70,7 @@ class Program
             }
         }
     }
-    
+
     private void LoadVideoData()
     {
         try
@@ -83,7 +88,6 @@ class Program
             Console.WriteLine($"Error loading video data: {ex.Message}");
         }
     }
-
 
     private async Task LogAsync(LogMessage log)
     {
@@ -120,7 +124,7 @@ class Program
             await command.RespondAsync(messageContent, components: components, ephemeral:true);
         }
     }
-    
+
     private async Task InteractionCreatedAsync(SocketInteraction interaction)
     {
         if (interaction is SocketMessageComponent component)
@@ -144,63 +148,120 @@ class Program
         else if (component.Data.CustomId == "video_bookmarked")
         {
             await component.RespondAsync("Ya esta guardado", ephemeral: true);
+            Console.WriteLine("Video bookmarked");
         }
         else if (component.Data.CustomId == "video_bookmark")
         {
             // When the user clicks "Bookmark"
-            var bookmarkUrl = _videoData[_currentId];  // Renamed variable to avoid conflict
+            var bookmarkUrl = _videoData[_currentId];  // Get the URL for the current video
             var modifiedUrl = bookmarkUrl.Replace("www.youtube.com", "inv.nadeko.net");
 
             // Save the current state to persist the video ID
             await SaveStateAsync();
 
-            // Remove the current navigation buttons and send a new message with the "Bookmarked" button
-            messageContent = $"**Video {_currentId}:**\n{modifiedUrl}";
-            
-            // Assuming `modifiedUrl` is the original YouTube URL with "www.youtube.com"
-            var originalYoutubeUrl = modifiedUrl.Replace("inv.nadeko.net", "www.youtube.com");
+            // Check if the video is already bookmarked
+            var existingBookmarks = LoadBookmarks();
+            if (existingBookmarks.Any(b => b.VideoId == _currentId))
+            {
+                await component.RespondAsync("Este video ya está guardado.", ephemeral: true);
+                return;  // Skip saving if the video is already bookmarked
+            }
+
+            // Save the bookmark to the CSV
+            SaveBookmarkToCsv(_currentId, modifiedUrl);
 
             // Create the components with a disabled "⭐ Guardado" button and YouTube link button
+            var originalYoutubeUrl = modifiedUrl.Replace("inv.nadeko.net", "www.youtube.com");
+
             var bookmarkComponents = new ComponentBuilder()
                 .WithButton("⭐ Guardado", "video_bookmarked", ButtonStyle.Secondary)
                 .WithButton("🎥 YouTube", null, ButtonStyle.Link, url: originalYoutubeUrl)
                 .Build();
 
-            await component.Channel.SendMessageAsync(messageContent, components: bookmarkComponents);
-            
+            // Send the message with the bookmark components
+            await component.Channel.SendMessageAsync($"**Video {_currentId}:**\n{modifiedUrl}", components: bookmarkComponents);
+
             // Send a duplicated message with the "Back", "Next", and "Bookmark" buttons
             var navigationComponents = new ComponentBuilder()
                 .WithButton("⬅️ Anterior", "video_back", ButtonStyle.Primary)
                 .WithButton("Siguiente ➡️", "video_next", ButtonStyle.Primary)
                 .WithButton("⭐ Guardar", "video_bookmark", ButtonStyle.Secondary)
                 .Build();
-            
-            await component.RespondAsync(messageContent, components: navigationComponents, ephemeral: true);
+
+            await component.RespondAsync($"**Video {_currentId}:**\n{modifiedUrl}", components: navigationComponents, ephemeral: true);
             return;
         }
-        
-            // Default case for handling back, next, or other button presses
-            var defaultUrl = _videoData[_currentId];  // Renamed variable to avoid conflict
-            var modifiedUrlDefault = defaultUrl.Replace("www.youtube.com", "inv.nadeko.net");
 
-            // Save the current state to persist the video ID
-            await SaveStateAsync();
+        // Default case for handling back, next, or other button presses
+        var defaultUrl = _videoData[_currentId];  // Get the default URL
+        var modifiedUrlDefault = defaultUrl.Replace("www.youtube.com", "inv.nadeko.net");
 
-            // Add newline before the link
-            messageContent = $"**Video {_currentId}:**\n{modifiedUrlDefault}";
+        // Save the current state to persist the video ID
+        await SaveStateAsync();
 
-            // Send the updated message with the navigation buttons
-            var navigationButtons = new ComponentBuilder()
-                .WithButton("⬅️ Anterior", "video_back", ButtonStyle.Primary)
-                .WithButton("Siguiente ➡️", "video_next", ButtonStyle.Primary)
-                .WithButton("⭐ Guardar", "video_bookmark", ButtonStyle.Secondary)
-                .Build();
+        // Send the updated message with the navigation buttons
+        var navigationButtons = new ComponentBuilder()
+            .WithButton("⬅️ Anterior", "video_back", ButtonStyle.Primary)
+            .WithButton("Siguiente ➡️", "video_next", ButtonStyle.Primary)
+            .WithButton("⭐ Guardar", "video_bookmark", ButtonStyle.Secondary)
+            .Build();
 
-            await component.UpdateAsync(msg =>
+        await component.UpdateAsync(msg =>
+        {
+            msg.Content = $"**Video {_currentId}:**\n{modifiedUrlDefault}";
+            msg.Components = navigationButtons;
+        });
+    }
+
+    // Save the bookmark to CSV if it doesn't already exist
+    private void SaveBookmarkToCsv(int videoId, string videoUrl)
+    {
+        try
+        {
+            List<Bookmark> bookmarks = LoadBookmarks();
+
+            // Check if the video is already bookmarked
+            if (bookmarks.Any(b => b.VideoId == videoId))
             {
-                msg.Content = messageContent;
-                msg.Embed = null;
-                msg.Components = navigationButtons;  // Re-add the navigation buttons
-            });
+                Console.WriteLine("Bookmark already exists.");
+                return;  // Skip saving if it's a duplicate
+            }
+
+            // Add the new bookmark
+            bookmarks.Add(new Bookmark { VideoId = videoId, Url = videoUrl });
+
+            // Save the updated list to the CSV file
+            using var writer = new StreamWriter(_bookmarkedVideos);
+            using var csvWriter = new CsvWriter(writer, CultureInfo.InvariantCulture);
+            csvWriter.WriteRecords(bookmarks);
+            Console.WriteLine("Bookmark saved.");
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving bookmark: {ex.Message}");
+        }
+    }
+
+    // Load bookmarks from the CSV file
+    private List<Bookmark> LoadBookmarks()
+    {
+        try
+        {
+            if (File.Exists(_bookmarkedVideos))
+            {
+                using var reader = new StreamReader(_bookmarkedVideos);
+                using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
+                return csv.GetRecords<Bookmark>().ToList();
+            }
+            else
+            {
+                return new List<Bookmark>();  // Return an empty list if no file exists
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading bookmarks: {ex.Message}");
+            return new List<Bookmark>();  // Return an empty list if an error occurs
+        }
+    }
 }
