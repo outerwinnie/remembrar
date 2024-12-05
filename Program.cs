@@ -187,7 +187,7 @@ class Program
                 .WithButton("⭐ Guardar", "video_bookmark", ButtonStyle.Secondary)
                 .Build();
 
-            await component.RespondAsync(messageContent, components: navigationComponents, ephemeral:true);
+            await component.FollowupAsync(messageContent, components: navigationComponents, ephemeral: true);
             return;
         }
         
