@@ -11,7 +11,7 @@ class Program
 {
     private readonly DiscordSocketClient _client;
     private Dictionary<int, string> _videoData;
-    private string _stateFilePath = "video_state.txt";  // File to store the current ID
+    private string _stateFilePath;  // File to store the current ID
     private string _discordToken;
     private string _youtubeCsv;
     private string _guildId;
