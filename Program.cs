@@ -94,8 +94,8 @@ class Program
     {
         var guild = _client.GetGuild(Convert.ToUInt64(_guildId)); // Replace with your guild ID
         var command = new SlashCommandBuilder()
-            .WithName("inicializar")
-            .WithDescription("Inicializa el bot con el primer video");
+            .WithName("encender")
+            .WithDescription("Enciende la television");
 
         await guild.CreateApplicationCommandAsync(command.Build());
         Console.WriteLine("Bot is ready.");
@@ -103,13 +103,8 @@ class Program
 
     private async Task SlashCommandExecutedAsync(SocketSlashCommand command)
     {
-        if (command.CommandName == "inicializar")
+        if (command.CommandName == "encender")
         {
-            if (command.User.Id != 154537457008902144)  // Replace with your specific user ID
-            {
-                return;
-            }
-
             var originalUrl = _videoData[_currentId];
             var modifiedUrl = originalUrl.Replace("www.youtube.com", "inv.nadeko.net");
 
@@ -149,7 +144,6 @@ class Program
         else if (component.Data.CustomId == "video_bookmarked")
         {
             await component.RespondAsync("Ya esta guardado", ephemeral: true);
-            Console.WriteLine("Video bookmarked");
         }
         else if (component.Data.CustomId == "video_bookmark")
         {
@@ -180,8 +174,7 @@ class Program
                 .WithButton("Siguiente ➡️", "video_next", ButtonStyle.Primary)
                 .WithButton("⭐ Guardar", "video_bookmark", ButtonStyle.Secondary)
                 .Build();
-
-            Console.WriteLine("Video bookmarked, trying to respond");
+            
             await component.RespondAsync(messageContent, components: navigationComponents, ephemeral: true);
             return;
         }
