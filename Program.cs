@@ -122,7 +122,7 @@ class Program
             // Add newline before the link
             var messageContent = $"**Video {_currentId}:**\n{modifiedUrl}";
 
-            await command.RespondAsync(messageContent, components: components);
+            await command.RespondAsync(messageContent, components: components, ephemeral:true);
         }
     }
     
@@ -171,7 +171,7 @@ class Program
             // Create the components with a disabled "⭐ Guardado" button and YouTube link button
             var bookmarkComponents = new ComponentBuilder()
                 .WithButton("⭐ Guardado", "video_bookmarked", ButtonStyle.Secondary)
-                .WithButton("🎥 YouTube", null, ButtonStyle.Link, url: originalYoutubeUrl) // Emoji added directly in the label
+                .WithButton("🎥 YouTube", null, ButtonStyle.Link, url: originalYoutubeUrl)
                 .Build();
 
             // Update the current message without the navigation buttons
@@ -181,7 +181,6 @@ class Program
                 msg.Embed = null;  // No embed for the preview
                 msg.Components = bookmarkComponents;  // Replace with bookmark and YouTube link button
             });
-
             
             // Send a duplicated message with the "Back", "Next", and "Bookmark" buttons
             var navigationComponents = new ComponentBuilder()
