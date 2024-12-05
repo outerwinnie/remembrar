@@ -11,7 +11,10 @@ class Program
 {
     private readonly DiscordSocketClient _client;
     private Dictionary<int, string> _videoData;
-    private const string StateFilePath = "video_state.txt";  // File to store the current ID
+    private string _stateFilePath = "video_state.txt";  // File to store the current ID
+    private string _discordToken;
+    private string _youtubeCsv;
+    private string _guildId;
     private int _currentId = 1;  // Start at ID 1
 
     public static Task Main(string[] args) => new Program().MainAsync();
@@ -27,11 +30,16 @@ class Program
         _client.Ready += ReadyAsync;
         _client.SlashCommandExecuted += SlashCommandExecutedAsync;
         _client.InteractionCreated += InteractionCreatedAsync;
+        
+        _stateFilePath = Environment.GetEnvironmentVariable("STATE_FILE_PATH") ?? throw new InvalidOperationException();
+        _discordToken = Environment.GetEnvironmentVariable("DISCORD_BOT_TOKEN") ?? throw new InvalidOperationException();
+        _youtubeCsv = Environment.GetEnvironmentVariable("YOUTUBE_CSV") ?? throw new InvalidOperationException();
+        _guildId = Environment.GetEnvironmentVariable("GUILD_ID") ?? throw new InvalidOperationException();
 
         // Load saved video ID state
         LoadState();
 
-        await _client.LoginAsync(TokenType.Bot, "XXX");
+        await _client.LoginAsync(TokenType.Bot, _discordToken);
         await _client.StartAsync();
 
         LoadVideoData();
@@ -42,14 +50,14 @@ class Program
     private async Task SaveStateAsync()
     {
         Console.WriteLine("Saving state...");
-        await File.WriteAllTextAsync(StateFilePath, _currentId.ToString());
+        await File.WriteAllTextAsync(_stateFilePath, _currentId.ToString());
     }
 
     private void LoadState()
     {
-        if (File.Exists(StateFilePath))
+        if (File.Exists(_stateFilePath))
         {
-            var content = File.ReadAllText(StateFilePath);
+            var content = File.ReadAllText(_stateFilePath);
             if (int.TryParse(content, out int savedId))
             {
                 Console.WriteLine("Loading state...");
@@ -62,7 +70,7 @@ class Program
     {
         try
         {
-            using var reader = new StreamReader("youtube_videos.csv");
+            using var reader = new StreamReader(_youtubeCsv);
             using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
 
             var records = csv.GetRecords<dynamic>();
@@ -84,7 +92,7 @@ class Program
 
     private async Task ReadyAsync()
     {
-        var guild = _client.GetGuild(757271564227182602); // Replace with your guild ID
+        var guild = _client.GetGuild(Convert.ToUInt64(_guildId)); // Replace with your guild ID
         var command = new SlashCommandBuilder()
             .WithName("inicializar")
             .WithDescription("Inicializa el bot con el primer video");
