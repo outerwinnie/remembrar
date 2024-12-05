@@ -172,13 +172,7 @@ class Program
                 .WithButton("🎥 YouTube", null, ButtonStyle.Link, url: originalYoutubeUrl)
                 .Build();
 
-            // Update the current message without the navigation buttons
-            await component.UpdateAsync(msg =>
-            {
-                msg.Content = messageContent;
-                msg.Embed = null;  // No embed for the preview
-                msg.Components = bookmarkComponents;  // Replace with bookmark and YouTube link button
-            });
+            await component.Channel.SendMessageAsync(messageContent, components: bookmarkComponents);
             
             // Send a duplicated message with the "Back", "Next", and "Bookmark" buttons
             var navigationComponents = new ComponentBuilder()
