@@ -94,8 +94,8 @@ class Program
     {
         var guild = _client.GetGuild(Convert.ToUInt64(_guildId)); // Replace with your guild ID
         var command = new SlashCommandBuilder()
-            .WithName("inicializar")
-            .WithDescription("Inicializa el bot con el primer video");
+            .WithName("encender")
+            .WithDescription("Enciende la television");
 
         await guild.CreateApplicationCommandAsync(command.Build());
         Console.WriteLine("Bot is ready.");
@@ -103,13 +103,8 @@ class Program
 
     private async Task SlashCommandExecutedAsync(SocketSlashCommand command)
     {
-        if (command.CommandName == "inicializar")
+        if (command.CommandName == "encender")
         {
-            if (command.User.Id != 154537457008902144)  // Replace with your specific user ID
-            {
-                return;
-            }
-
             var originalUrl = _videoData[_currentId];
             var modifiedUrl = originalUrl.Replace("www.youtube.com", "inv.nadeko.net");
 
@@ -122,7 +117,7 @@ class Program
             // Add newline before the link
             var messageContent = $"**Video {_currentId}:**\n{modifiedUrl}";
 
-            await command.RespondAsync(messageContent, components: components);
+            await command.RespondAsync(messageContent, components: components, ephemeral:true);
         }
     }
     
@@ -149,7 +144,6 @@ class Program
         else if (component.Data.CustomId == "video_bookmarked")
         {
             await component.RespondAsync("Ya esta guardado", ephemeral: true);
-            Console.WriteLine("Video bookmarked");
         }
         else if (component.Data.CustomId == "video_bookmark")
         {
@@ -162,8 +156,6 @@ class Program
 
             // Remove the current navigation buttons and send a new message with the "Bookmarked" button
             messageContent = $"**Video {_currentId}:**\n{modifiedUrl}";
-
-            var customEmoji = "<:custom_emoji_name:1314316654158680174>";
             
             // Assuming `modifiedUrl` is the original YouTube URL with "www.youtube.com"
             var originalYoutubeUrl = modifiedUrl.Replace("inv.nadeko.net", "www.youtube.com");
@@ -171,17 +163,10 @@ class Program
             // Create the components with a disabled "⭐ Guardado" button and YouTube link button
             var bookmarkComponents = new ComponentBuilder()
                 .WithButton("⭐ Guardado", "video_bookmarked", ButtonStyle.Secondary)
-                .WithButton("🎥 YouTube", null, ButtonStyle.Link, url: originalYoutubeUrl) // Emoji added directly in the label
+                .WithButton("🎥 YouTube", null, ButtonStyle.Link, url: originalYoutubeUrl)
                 .Build();
 
-            // Update the current message without the navigation buttons
-            await component.UpdateAsync(msg =>
-            {
-                msg.Content = messageContent;
-                msg.Embed = null;  // No embed for the preview
-                msg.Components = bookmarkComponents;  // Replace with bookmark and YouTube link button
-            });
-
+            await component.Channel.SendMessageAsync(messageContent, components: bookmarkComponents);
             
             // Send a duplicated message with the "Back", "Next", and "Bookmark" buttons
             var navigationComponents = new ComponentBuilder()
@@ -189,8 +174,8 @@ class Program
                 .WithButton("Siguiente ➡️", "video_next", ButtonStyle.Primary)
                 .WithButton("⭐ Guardar", "video_bookmark", ButtonStyle.Secondary)
                 .Build();
-
-            await component.Channel.SendMessageAsync(messageContent, components: navigationComponents);
+            
+            await component.RespondAsync(messageContent, components: navigationComponents, ephemeral: true);
             return;
         }
         
