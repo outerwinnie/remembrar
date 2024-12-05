@@ -165,10 +165,13 @@ class Program
 
             var customEmoji = "<:custom_emoji_name:1314316654158680174>";
             
-            // Create the components with a disabled "⭐ Bookmarked" button
+            // Assuming `modifiedUrl` is the original YouTube URL with "www.youtube.com"
+            var originalYoutubeUrl = modifiedUrl.Replace("inv.nadeko.net", "www.youtube.com");
+
+            // Create the components with a disabled "⭐ Guardado" button and YouTube link button
             var bookmarkComponents = new ComponentBuilder()
                 .WithButton("⭐ Guardado", "video_bookmarked", ButtonStyle.Secondary)
-                .WithButton($"{customEmoji} Ver en Youtube", "ver_youtube", ButtonStyle.Secondary)
+                .WithButton("🎥 YouTube", null, ButtonStyle.Link, url: originalYoutubeUrl) // Emoji added directly in the label
                 .Build();
 
             // Update the current message without the navigation buttons
@@ -176,8 +179,9 @@ class Program
             {
                 msg.Content = messageContent;
                 msg.Embed = null;  // No embed for the preview
-                msg.Components = bookmarkComponents;  // Replace with bookmark button only
+                msg.Components = bookmarkComponents;  // Replace with bookmark and YouTube link button
             });
+
             
             // Send a duplicated message with the "Back", "Next", and "Bookmark" buttons
             var navigationComponents = new ComponentBuilder()
