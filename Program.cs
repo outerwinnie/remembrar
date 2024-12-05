@@ -181,6 +181,7 @@ class Program
                 .WithButton("⭐ Guardar", "video_bookmark", ButtonStyle.Secondary)
                 .Build();
 
+            Console.WriteLine("Video bookmarked, trying to respond");
             await component.FollowupAsync(messageContent, components: navigationComponents, ephemeral: true);
             return;
         }
@@ -202,11 +203,6 @@ class Program
                 .WithButton("⭐ Guardar", "video_bookmark", ButtonStyle.Secondary)
                 .Build();
 
-            await component.UpdateAsync(msg =>
-            {
-                msg.Content = messageContent;
-                msg.Embed = null;
-                msg.Components = navigationButtons;  // Re-add the navigation buttons
-            });
+            await component.FollowupAsync(messageContent, components: navigationButtons, ephemeral: true);
         }
 }
