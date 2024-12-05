@@ -27,7 +27,7 @@ class Program
         _client.Ready += ReadyAsync;
         _client.SlashCommandExecuted += SlashCommandExecutedAsync;
         _client.InteractionCreated += InteractionCreatedAsync;
-
+        
         _discordToken = Environment.GetEnvironmentVariable("DISCORD_BOT_TOKEN") ?? throw new InvalidOperationException();
         _youtubeCsv = Environment.GetEnvironmentVariable("YOUTUBE_CSV") ?? throw new InvalidOperationException();
         _guildId = Environment.GetEnvironmentVariable("GUILD_ID") ?? throw new InvalidOperationException();
