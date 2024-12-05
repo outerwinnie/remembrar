@@ -163,10 +163,12 @@ class Program
             // Remove the current navigation buttons and send a new message with the "Bookmarked" button
             messageContent = $"**Video {_currentId}:**\n{modifiedUrl}";
 
+            var customEmoji = "<:custom_emoji_name:1314316654158680174>";
+            
             // Create the components with a disabled "⭐ Bookmarked" button
             var bookmarkComponents = new ComponentBuilder()
                 .WithButton("⭐ Guardado", "video_bookmarked", ButtonStyle.Secondary)
-                .WithButton("<:custom_emoji_name:1314316654158680174> Ver en Youtube", "ver_youtube", ButtonStyle.Secondary)
+                .WithButton($"{customEmoji} Ver en Youtube", "ver_youtube", ButtonStyle.Secondary)
                 .Build();
 
             // Update the current message without the navigation buttons
@@ -176,7 +178,7 @@ class Program
                 msg.Embed = null;  // No embed for the preview
                 msg.Components = bookmarkComponents;  // Replace with bookmark button only
             });
-
+            
             // Send a duplicated message with the "Back", "Next", and "Bookmark" buttons
             var navigationComponents = new ComponentBuilder()
                 .WithButton("⬅️ Anterior", "video_back", ButtonStyle.Primary)
