@@ -2,10 +2,6 @@ using Discord;
 using Discord.WebSocket;
 using CsvHelper;
 using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Collections.Generic;
 
 class Program
 {
@@ -79,15 +75,24 @@ class Program
         }
     }
 
-    // Load the user's state from the CSV
     private void LoadState(ulong userId)
     {
         try
         {
-            using var reader = new StreamReader(_videoProgress);
+            // Ensure the file exists, if not, create it
+            if (!File.Exists("video_progress.csv"))
+            {
+                using (var writer = new StreamWriter("video_progress.csv"))
+                {
+                    var csvWriter = new CsvWriter(writer, CultureInfo.InvariantCulture);
+                    csvWriter.WriteRecords(new List<UserProgress>());  // Create empty file
+                }
+            }
+
+            using var reader = new StreamReader("video_progress.csv");
             using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
             var records = csv.GetRecords<UserProgress>().ToList();
-            
+
             var userProgress = records.FirstOrDefault(r => r.UserId == userId);
             if (userProgress != null)
             {
@@ -105,18 +110,26 @@ class Program
         }
     }
 
-    // Save the user's state to the CSV
     private async Task SaveStateAsync(ulong userId)
     {
         try
         {
             var userProgressList = new List<UserProgress>();
 
-            // Read existing records
-            if (File.Exists("video_progress.csv"))
+            // Check if the file exists, if not, create it
+            if (!File.Exists("video_progress.csv"))
             {
-                using var reader = new StreamReader("video_progress.csv");
-                using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
+                using (var writer = new StreamWriter("video_progress.csv"))
+                {
+                    var csvWriter = new CsvWriter(writer, CultureInfo.InvariantCulture);
+                    csvWriter.WriteRecords(new List<UserProgress>());  // Create empty file
+                }
+            }
+
+            // Read existing records
+            using (var reader = new StreamReader("video_progress.csv"))
+            using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
+            {
                 userProgressList = csv.GetRecords<UserProgress>().ToList();
             }
 
@@ -132,10 +145,12 @@ class Program
             }
 
             // Save the updated list to the CSV file
-            using var writer = new StreamWriter("video_progress.csv");
-            using var csvWriter = new CsvWriter(writer, CultureInfo.InvariantCulture);
-            csvWriter.WriteRecords(userProgressList);
-            
+            using (var writer = new StreamWriter("video_progress.csv"))
+            using (var csvWriter = new CsvWriter(writer, CultureInfo.InvariantCulture))
+            {
+                csvWriter.WriteRecords(userProgressList);
+            }
+
             Console.WriteLine("State saved.");
         }
         catch (Exception ex)
