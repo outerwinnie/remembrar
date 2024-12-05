@@ -162,8 +162,6 @@ class Program
 
             // Remove the current navigation buttons and send a new message with the "Bookmarked" button
             messageContent = $"**Video {_currentId}:**\n{modifiedUrl}";
-
-            var customEmoji = "<:custom_emoji_name:1314316654158680174>";
             
             // Assuming `modifiedUrl` is the original YouTube URL with "www.youtube.com"
             var originalYoutubeUrl = modifiedUrl.Replace("inv.nadeko.net", "www.youtube.com");
@@ -189,7 +187,7 @@ class Program
                 .WithButton("⭐ Guardar", "video_bookmark", ButtonStyle.Secondary)
                 .Build();
 
-            await component.Channel.SendMessageAsync(messageContent, components: navigationComponents);
+            await component.RespondAsync(messageContent, components: navigationComponents, ephemeral:true);
             return;
         }
         
