@@ -80,16 +80,16 @@ class Program
         try
         {
             // Ensure the file exists, if not, create it
-            if (!File.Exists("video_progress.csv"))
+            if (!File.Exists(_videoProgress))
             {
-                using (var writer = new StreamWriter("video_progress.csv"))
+                using (var writer = new StreamWriter(_videoProgress))
                 {
                     var csvWriter = new CsvWriter(writer, CultureInfo.InvariantCulture);
                     csvWriter.WriteRecords(new List<UserProgress>());  // Create empty file
                 }
             }
 
-            using var reader = new StreamReader("video_progress.csv");
+            using var reader = new StreamReader(_videoProgress);
             using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
             var records = csv.GetRecords<UserProgress>().ToList();
 
@@ -117,9 +117,9 @@ class Program
             var userProgressList = new List<UserProgress>();
 
             // Check if the file exists, if not, create it
-            if (!File.Exists("video_progress.csv"))
+            if (!File.Exists(_videoProgress))
             {
-                using (var writer = new StreamWriter("video_progress.csv"))
+                using (var writer = new StreamWriter(_videoProgress))
                 {
                     var csvWriter = new CsvWriter(writer, CultureInfo.InvariantCulture);
                     csvWriter.WriteRecords(new List<UserProgress>());  // Create empty file
@@ -127,7 +127,7 @@ class Program
             }
 
             // Read existing records
-            using (var reader = new StreamReader("video_progress.csv"))
+            using (var reader = new StreamReader(_videoProgress))
             using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
             {
                 userProgressList = csv.GetRecords<UserProgress>().ToList();
@@ -145,7 +145,7 @@ class Program
             }
 
             // Save the updated list to the CSV file
-            using (var writer = new StreamWriter("video_progress.csv"))
+            using (var writer = new StreamWriter(_videoProgress))
             using (var csvWriter = new CsvWriter(writer, CultureInfo.InvariantCulture))
             {
                 csvWriter.WriteRecords(userProgressList);
