@@ -33,7 +33,7 @@ ENV DISCORD_BOT_TOKEN=""
 ENV YOUTUBE_CSV="youtube_videos.csv"
 ENV GUILD_ID=""
 ENV VIDEO_PROGRESS="video_progress.csv"
-ENV BOOKMARKED_VIDEOS"bookmarked_videos.csv"
+ENV BOOKMARKED_VIDEOS="bookmarked_videos.csv"
 
 # Expose port if necessary (optional for Discord bots)
 # EXPOSE 80
