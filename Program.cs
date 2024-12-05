@@ -1,4 +1,4 @@
-﻿using Discord;
+using Discord;
 using Discord.WebSocket;
 using CsvHelper;
 using System.Globalization;
@@ -11,6 +11,7 @@ class Program
 {
     private readonly DiscordSocketClient _client;
     private Dictionary<int, string> _videoData;
+    private const string StateFilePath = "video_state.txt";  // File to store the current ID
     private int _currentId = 1;  // Start at ID 1
 
     public static Task Main(string[] args) => new Program().MainAsync();
@@ -25,17 +26,38 @@ class Program
         _client.Log += LogAsync;
         _client.Ready += ReadyAsync;
         _client.SlashCommandExecuted += SlashCommandExecutedAsync;
-        _client.InteractionCreated += InteractionCreatedAsync; // Handle button interactions
+        _client.InteractionCreated += InteractionCreatedAsync;
 
-        await _client.LoginAsync(TokenType.Bot, "xxx"); // Replace with your bot token
+        // Load saved video ID state
+        LoadState();
+
+        await _client.LoginAsync(TokenType.Bot, "xxx");
         await _client.StartAsync();
 
-        // Load video data from CSV file
         LoadVideoData();
 
-        await Task.Delay(-1); // Keep the bot running
+        await Task.Delay(-1);  // Keep the bot running
     }
 
+    private async Task SaveStateAsync()
+    {
+        Console.WriteLine("Saving state...");
+        await File.WriteAllTextAsync(StateFilePath, _currentId.ToString());
+    }
+
+    private void LoadState()
+    {
+        if (File.Exists(StateFilePath))
+        {
+            var content = File.ReadAllText(StateFilePath);
+            if (int.TryParse(content, out int savedId))
+            {
+                Console.WriteLine("Loading state...");
+                _currentId = savedId;
+            }
+        }
+    }
+    
     private void LoadVideoData()
     {
         try
@@ -75,29 +97,28 @@ class Program
     {
         if (command.CommandName == "inicializar")
         {
-            // Ensure only a specific user can run this command
-            if (command.User.Id != 154537457008902144)  // Replace with the specific user ID
+            if (command.User.Id != 154537457008902144)  // Replace with your specific user ID
             {
                 await command.RespondAsync("You do not have permission to use this command.", ephemeral: true);
                 return;
             }
 
-            var videoUrl = _videoData[_currentId];
-            var embed = new EmbedBuilder()
-                .WithTitle($"Video ID: {_currentId}")
-                .WithUrl(videoUrl)
-                .WithDescription(videoUrl)
-                .Build();
+            var originalUrl = _videoData[_currentId];
+            var modifiedUrl = originalUrl.Replace("www.youtube.com", "inv.nadeko.net");
 
             var components = new ComponentBuilder()
-                .WithButton("⬅️ Anterior", "video_back", ButtonStyle.Primary)
-                .WithButton("Siguiente ➡️", "video_next", ButtonStyle.Primary)
+                .WithButton("⬅️ Back", "video_back", ButtonStyle.Primary)
+                .WithButton("Next ➡️", "video_next", ButtonStyle.Primary)
+                .WithButton("⭐ Bookmark", "video_bookmark", ButtonStyle.Secondary)
                 .Build();
 
-            await command.RespondAsync(embed: embed, components: components);
+            // Add newline before the link
+            var messageContent = $"**Video ID {_currentId}:**\n{modifiedUrl}";
+
+            await command.RespondAsync(messageContent, components: components);
         }
     }
-
+    
     private async Task InteractionCreatedAsync(SocketInteraction interaction)
     {
         if (interaction is SocketMessageComponent component)
@@ -108,6 +129,8 @@ class Program
 
     private async Task ButtonExecuted(SocketMessageComponent component)
     {
+        string messageContent;
+
         if (component.Data.CustomId == "video_back" && _currentId > 1)
         {
             _currentId--;
@@ -116,17 +139,64 @@ class Program
         {
             _currentId++;
         }
+        else if (component.Data.CustomId == "video_bookmark")
+        {
+            // When the user clicks "Bookmark"
+            var bookmarkUrl = _videoData[_currentId];  // Renamed variable to avoid conflict
+            var modifiedUrl = bookmarkUrl.Replace("www.youtube.com", "inv.nadeko.net");
 
-        var originalUrl = _videoData[_currentId];
+            // Save the current state to persist the video ID
+            await SaveStateAsync();
 
-        // Replace "www.youtube.com" with "inv.nadeko.net"
-        var modifiedUrl = originalUrl.Replace("www.youtube.com", "inv.nadeko.net");
+            // Remove the current navigation buttons and send a new message with the "Bookmarked" button
+            messageContent = $"**Video {_currentId}:**\n{modifiedUrl}";
 
-        // Update the message with the modified URL
+            // Create the components with a disabled "⭐ Bookmarked" button
+            var bookmarkComponents = new ComponentBuilder()
+                .WithButton("⭐ Guardado", "video_bookmark", ButtonStyle.Secondary)
+                .Build();
+
+            // Update the current message without the navigation buttons
+            await component.UpdateAsync(msg =>
+            {
+                msg.Content = messageContent;
+                msg.Embed = null;  // No embed for the preview
+                msg.Components = bookmarkComponents;  // Replace with bookmark button only
+            });
+
+            // Send a duplicated message with the "Back", "Next", and "Bookmark" buttons
+            var navigationComponents = new ComponentBuilder()
+                .WithButton("⬅️ Anterior", "video_back", ButtonStyle.Primary)
+                .WithButton("Siguiente ➡️", "video_next", ButtonStyle.Primary)
+                .WithButton("⭐ Guardar", "video_bookmark", ButtonStyle.Secondary)
+                .Build();
+
+            await component.Channel.SendMessageAsync(messageContent, components: navigationComponents);
+            return;
+        }
+
+        // Default case for handling back, next, or other button presses
+        var defaultUrl = _videoData[_currentId];  // Renamed variable to avoid conflict
+        var modifiedUrlDefault = defaultUrl.Replace("www.youtube.com", "inv.nadeko.net");
+
+        // Save the current state to persist the video ID
+        await SaveStateAsync();
+
+        // Add newline before the link
+        messageContent = $"**Video {_currentId}:**\n{modifiedUrlDefault}";
+
+        // Send the updated message with the navigation buttons
+        var navigationButtons = new ComponentBuilder()
+            .WithButton("⬅️ Anterior", "video_back", ButtonStyle.Primary)
+            .WithButton("Siguiente ➡️", "video_next", ButtonStyle.Primary)
+            .WithButton("⭐ Guardar", "video_bookmark", ButtonStyle.Secondary)
+            .Build();
+
         await component.UpdateAsync(msg =>
         {
-            msg.Content = modifiedUrl;  // Use modified URL for posting
-            msg.Embed = null;           // No embed to ensure preview generation
+            msg.Content = messageContent;
+            msg.Embed = null;
+            msg.Components = navigationButtons;  // Re-add the navigation buttons
         });
     }
 }
