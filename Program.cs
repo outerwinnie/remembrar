@@ -93,6 +93,7 @@ class Program
     
     private void SyncStateToFile()
     {
+        Console.WriteLine($"[SyncTask] Syncing to file");
         using var writer = new StreamWriter(_stateFilePath);
         using var csvWriter = new CsvWriter(writer, CultureInfo.InvariantCulture);
         csvWriter.WriteRecords(_userStateCache);
