@@ -1,7 +1,9 @@
+using System.Globalization;
+using CsvHelper;
 using Discord;
 using Discord.WebSocket;
-using CsvHelper;
-using System.Globalization;
+
+namespace Remembrar;
 
 public class Bookmark
 {
@@ -19,7 +21,7 @@ class Program
 {
     private readonly DiscordSocketClient _client;
     private Dictionary<int, string> _videoData;
-    private string _stateFilePath;  // File to store the current ID
+    private string _videoProgress;  // File to store the current ID
     private string _discordToken;
     private string _youtubeCsv;
     private string _guildId;
@@ -40,7 +42,7 @@ class Program
         _client.SlashCommandExecuted += SlashCommandExecutedAsync;
         _client.InteractionCreated += InteractionCreatedAsync;
 
-        _stateFilePath = Environment.GetEnvironmentVariable("STATE_FILE_PATH") ?? throw new InvalidOperationException();
+        _videoProgress = Environment.GetEnvironmentVariable("VIDEO_PROGRESS") ?? throw new InvalidOperationException();
         _discordToken = Environment.GetEnvironmentVariable("DISCORD_BOT_TOKEN") ?? throw new InvalidOperationException();
         _youtubeCsv = Environment.GetEnvironmentVariable("YOUTUBE_CSV") ?? throw new InvalidOperationException();
         _guildId = Environment.GetEnvironmentVariable("GUILD_ID") ?? throw new InvalidOperationException();
@@ -73,16 +75,16 @@ class Program
         }
         
         Console.WriteLine("Saving user state...");
-        using var writer = new StreamWriter(_stateFilePath);
+        using var writer = new StreamWriter(_videoProgress);
         using var csvWriter = new CsvWriter(writer, CultureInfo.InvariantCulture);
         csvWriter.WriteRecords(userStates);
     }
 
     private List<UserState> LoadUserStates()
     {
-        if (!File.Exists(_stateFilePath)) return new List<UserState>();
+        if (!File.Exists(_videoProgress)) return new List<UserState>();
 
-        using var reader = new StreamReader(_stateFilePath);
+        using var reader = new StreamReader(_videoProgress);
         using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
         Console.WriteLine("Loading user states...");
         return csv.GetRecords<UserState>().ToList();
