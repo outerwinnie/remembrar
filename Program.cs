@@ -194,9 +194,7 @@ class Program
             // Save the bookmark to the CSV
             SaveBookmarkToCsv(userState.CurrentVideoId, modifiedUrl);
             
-            ulong threadId = 1314428536253321297;
-            
-            // Get the channel where the thread exists
+            // Get the channel where the thread should exist
             var channel = component.Channel as SocketTextChannel;
             if (channel == null)
             {
@@ -204,13 +202,23 @@ class Program
                 return;
             }
 
-            // Access the thread by ID from the channel's Threads collection
+            // Check if the thread exists, if not, create one
+            ulong threadId = 1314428536253321297; // Replace with the desired thread ID
             var thread = channel.Threads.FirstOrDefault(t => t.Id == threadId);
+
             if (thread == null)
             {
-                Console.WriteLine("[Bookmark] Thread not found.");
-                return;
+                Console.WriteLine("[Bookmark] Thread not found. Creating a new thread...");
+    
+                // Create a new thread
+                thread = await channel.CreateThreadAsync("Bookmark Thread", autoArchiveDuration: ThreadArchiveDuration.OneWeek);
+
+                Console.WriteLine("[Bookmark] New thread created.");
             }
+
+            // Send the message to the thread
+            await thread.SendMessageAsync($"**Video {userState.CurrentVideoId}:**\n{modifiedUrl}");
+            Console.WriteLine("[Bookmark] Message sent to the thread.");
             
             // Create the components with a disabled "⭐ Guardado" button and YouTube link button
             var originalYoutubeUrl = modifiedUrl.Replace("inv.nadeko.net", "www.youtube.com");
