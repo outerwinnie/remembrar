@@ -204,22 +204,7 @@ class Program
                 .Build();
 
             // Send the message with the bookmark components
-            var newMessage = await component.Channel.SendMessageAsync(
-                $"**Video {userState.CurrentVideoId}:**\n{modifiedUrl}",
-                components: bookmarkComponents
-            );
-            
-            // Remove the old message
-            try
-            {
-                // Delete the original message if it's accessible
-                await component.Message.DeleteAsync();
-                Console.WriteLine("[Bookmark] Old message deleted successfully.");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[Bookmark] Failed to delete old message: {ex.Message}");
-            }
+            await component.Channel.SendMessageAsync($"**Video {userState.CurrentVideoId}:**\n{modifiedUrl}", components: bookmarkComponents);
 
             // Send a duplicated message with the "Back", "Next", and "Bookmark" buttons
             var navigationComponents = new ComponentBuilder()
