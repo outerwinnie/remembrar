@@ -26,7 +26,6 @@ class Program
     private string _youtubeCsv;
     private string _guildId;
     private string _bookmarkedVideos;
-    private ulong _threadId;
     private int _currentId = 1;  // Start at ID 1
 
     public static Task Main(string[] args) => new Program().MainAsync();
@@ -48,7 +47,9 @@ class Program
         _youtubeCsv = Environment.GetEnvironmentVariable("YOUTUBE_CSV") ?? throw new InvalidOperationException();
         _guildId = Environment.GetEnvironmentVariable("GUILD_ID") ?? throw new InvalidOperationException();
         _bookmarkedVideos = Environment.GetEnvironmentVariable("BOOKMARKED_VIDEOS") ?? throw new InvalidOperationException();
-        _threadId = Convert.ToUInt64(Environment.GetEnvironmentVariable("THREAD_ID") ?? throw new InvalidOperationException());
+
+        // Load saved video ID state
+        //LoadState();
 
         await _client.LoginAsync(TokenType.Bot, _discordToken);
         await _client.StartAsync();
@@ -193,33 +194,7 @@ class Program
 
             // Save the bookmark to the CSV
             SaveBookmarkToCsv(userState.CurrentVideoId, modifiedUrl);
-            
-            // Get the channel where the thread should exist
-            var channel = component.Channel as SocketTextChannel;
-            if (channel == null)
-            {
-                Console.WriteLine("[Bookmark] This is not a text channel.");
-                return;
-            }
 
-            // Check if the thread exists, if not, create one
-            ulong threadId = 1314428536253321297; // Replace with the desired thread ID
-            var thread = channel.Threads.FirstOrDefault(t => t.Id == threadId);
-
-            if (thread == null)
-            {
-                Console.WriteLine("[Bookmark] Thread not found. Creating a new thread...");
-    
-                // Create a new thread
-                thread = await channel.CreateThreadAsync("Bookmark Thread", autoArchiveDuration: ThreadArchiveDuration.OneWeek);
-
-                Console.WriteLine("[Bookmark] New thread created.");
-            }
-
-            // Send the message to the thread
-            await thread.SendMessageAsync($"**Video {userState.CurrentVideoId}:**\n{modifiedUrl}");
-            Console.WriteLine("[Bookmark] Message sent to the thread.");
-            
             // Create the components with a disabled "⭐ Guardado" button and YouTube link button
             var originalYoutubeUrl = modifiedUrl.Replace("inv.nadeko.net", "www.youtube.com");
 
@@ -227,9 +202,9 @@ class Program
                 .WithButton("⭐ Guardado", "video_bookmarked", ButtonStyle.Secondary)
                 .WithButton("🎥 YouTube", null, ButtonStyle.Link, url: originalYoutubeUrl)
                 .Build();
-
+            
             // Send the message with the bookmark components
-            await thread.SendMessageAsync($"**Video {userState.CurrentVideoId}:**\n{modifiedUrl}", components: bookmarkComponents);
+            await component.Channel.SendMessageAsync($"**Video {userState.CurrentVideoId}:**\n{modifiedUrl}", components: bookmarkComponents);
 
             // Send a duplicated message with the "Back", "Next", and "Bookmark" buttons
             var navigationComponents = new ComponentBuilder()
@@ -238,7 +213,7 @@ class Program
                 .WithButton("⭐ Guardar", "video_bookmark", ButtonStyle.Secondary)
                 .Build();
 
-            await thread.SendMessageAsync($"**Video {userState.CurrentVideoId}:**\n{modifiedUrl}", components: navigationComponents);
+            await component.RespondAsync($"**Video {userState.CurrentVideoId}:**\n{modifiedUrl}", components: navigationComponents, ephemeral: true);
             return;
         }
 
