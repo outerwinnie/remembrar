@@ -61,7 +61,6 @@ class Program
 
     private void SaveUserState(ulong userId, int videoId)
     {
-        Console.WriteLine($"Cheking user state for {userId}, to save...");
         List<UserState> userStates = LoadUserStates();
         var existingState = userStates.FirstOrDefault(s => s.UserId == userId);
 
@@ -205,7 +204,22 @@ class Program
                 .Build();
 
             // Send the message with the bookmark components
-            await component.Channel.SendMessageAsync($"**Video {userState.CurrentVideoId}:**\n{modifiedUrl}", components: bookmarkComponents);
+            var newMessage = await component.Channel.SendMessageAsync(
+                $"**Video {userState.CurrentVideoId}:**\n{modifiedUrl}",
+                components: bookmarkComponents
+            );
+            
+            // Remove the old message
+            try
+            {
+                // Delete the original message if it's accessible
+                await component.Message.DeleteAsync();
+                Console.WriteLine("[Bookmark] Old message deleted successfully.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Bookmark] Failed to delete old message: {ex.Message}");
+            }
 
             // Send a duplicated message with the "Back", "Next", and "Bookmark" buttons
             var navigationComponents = new ComponentBuilder()
