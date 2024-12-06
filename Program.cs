@@ -194,6 +194,8 @@ class Program
             // Save the bookmark to the CSV
             SaveBookmarkToCsv(userState.CurrentVideoId, modifiedUrl);
             
+            ulong threadId = 1314428536253321297;
+            
             // Get the channel where the thread exists
             var channel = component.Channel as SocketTextChannel;
             if (channel == null)
@@ -202,11 +204,10 @@ class Program
                 return;
             }
 
-            // Find the thread by ID
-            var thread = channel.Threads.FirstOrDefault(t => t.Id == _threadId) as SocketThreadChannel;
+            // Access the thread by ID from the channel's Threads collection
+            var thread = channel.Threads.FirstOrDefault(t => t.Id == threadId);
             if (thread == null)
             {
-                Console.WriteLine(thread.Id);
                 Console.WriteLine("[Bookmark] Thread not found.");
                 return;
             }
@@ -229,7 +230,7 @@ class Program
                 .WithButton("⭐ Guardar", "video_bookmark", ButtonStyle.Secondary)
                 .Build();
 
-            await component.RespondAsync($"**Video {userState.CurrentVideoId}:**\n{modifiedUrl}", components: navigationComponents, ephemeral: true);
+            await thread.SendMessageAsync($"**Video {userState.CurrentVideoId}:**\n{modifiedUrl}", components: navigationComponents);
             return;
         }
 
