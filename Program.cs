@@ -1,8 +1,9 @@
+using System.Globalization;
+using CsvHelper;
 using Discord;
 using Discord.WebSocket;
-using CsvHelper;
-using System.Globalization;
-using System.Linq;
+
+namespace Remembrar;
 
 public class Bookmark
 {
@@ -10,11 +11,17 @@ public class Bookmark
     public string Url { get; set; }
 }
 
+public class UserState
+{
+    public ulong UserId { get; set; }
+    public int CurrentVideoId { get; set; }
+}
+
 class Program
 {
     private readonly DiscordSocketClient _client;
     private Dictionary<int, string> _videoData;
-    private string _stateFilePath;  // File to store the current ID
+    private string _videoProgress;  // File to store the current ID
     private string _discordToken;
     private string _youtubeCsv;
     private string _guildId;
@@ -35,14 +42,14 @@ class Program
         _client.SlashCommandExecuted += SlashCommandExecutedAsync;
         _client.InteractionCreated += InteractionCreatedAsync;
 
-        _stateFilePath = Environment.GetEnvironmentVariable("STATE_FILE_PATH") ?? throw new InvalidOperationException();
+        _videoProgress = Environment.GetEnvironmentVariable("VIDEO_PROGRESS") ?? throw new InvalidOperationException();
         _discordToken = Environment.GetEnvironmentVariable("DISCORD_BOT_TOKEN") ?? throw new InvalidOperationException();
         _youtubeCsv = Environment.GetEnvironmentVariable("YOUTUBE_CSV") ?? throw new InvalidOperationException();
         _guildId = Environment.GetEnvironmentVariable("GUILD_ID") ?? throw new InvalidOperationException();
         _bookmarkedVideos = Environment.GetEnvironmentVariable("BOOKMARKED_VIDEOS") ?? throw new InvalidOperationException();
 
         // Load saved video ID state
-        LoadState();
+        //LoadState();
 
         await _client.LoginAsync(TokenType.Bot, _discordToken);
         await _client.StartAsync();
@@ -52,23 +59,35 @@ class Program
         await Task.Delay(-1);  // Keep the bot running
     }
 
-    private async Task SaveStateAsync()
+    private void SaveUserState(ulong userId, int videoId)
     {
-        Console.WriteLine("Saving state...");
-        await File.WriteAllTextAsync(_stateFilePath, _currentId.ToString());
+        Console.WriteLine($"Cheking user state for {userId}, to save...");
+        List<UserState> userStates = LoadUserStates();
+        var existingState = userStates.FirstOrDefault(s => s.UserId == userId);
+
+        if (existingState != null)
+        {
+            existingState.CurrentVideoId = videoId;
+        }
+        else
+        {
+            userStates.Add(new UserState { UserId = userId, CurrentVideoId = videoId });
+        }
+        
+        Console.WriteLine("Saving user state...");
+        using var writer = new StreamWriter(_videoProgress);
+        using var csvWriter = new CsvWriter(writer, CultureInfo.InvariantCulture);
+        csvWriter.WriteRecords(userStates);
     }
 
-    private void LoadState()
+    private List<UserState> LoadUserStates()
     {
-        if (File.Exists(_stateFilePath))
-        {
-            var content = File.ReadAllText(_stateFilePath);
-            if (int.TryParse(content, out int savedId))
-            {
-                Console.WriteLine("Loading state...");
-                _currentId = savedId;
-            }
-        }
+        if (!File.Exists(_videoProgress)) return new List<UserState>();
+
+        using var reader = new StreamReader(_videoProgress);
+        using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
+        Console.WriteLine("Loading user states...");
+        return csv.GetRecords<UserState>().ToList();
     }
 
     private void LoadVideoData()
@@ -109,7 +128,11 @@ class Program
     {
         if (command.CommandName == "encender")
         {
-            var originalUrl = _videoData[_currentId];
+            var userId = command.User.Id;
+            var userStates = LoadUserStates();
+            var userState = userStates.FirstOrDefault(s => s.UserId == userId) ?? new UserState { UserId = userId, CurrentVideoId = 1 };
+            
+            var originalUrl = _videoData[userState.CurrentVideoId];
             var modifiedUrl = originalUrl.Replace("www.youtube.com", "inv.nadeko.net");
 
             var components = new ComponentBuilder()
@@ -119,7 +142,7 @@ class Program
                 .Build();
 
             // Add newline before the link
-            var messageContent = $"**Video {_currentId}:**\n{modifiedUrl}";
+            var messageContent = $"**Video {userState.CurrentVideoId}:**\n{modifiedUrl}";
 
             await command.RespondAsync(messageContent, components: components, ephemeral:true);
         }
@@ -135,15 +158,18 @@ class Program
 
     private async Task ButtonExecuted(SocketMessageComponent component)
     {
+        var userId = component.User.Id;
+        var userStates = LoadUserStates();
+        var userState = userStates.FirstOrDefault(s => s.UserId == userId) ?? new UserState { UserId = userId, CurrentVideoId = 1 };
         string messageContent;
 
-        if (component.Data.CustomId == "video_back" && _currentId > 1)
+        if (component.Data.CustomId == "video_back" && userState.CurrentVideoId > 1)
         {
-            _currentId--;
+            userState.CurrentVideoId--;
         }
-        else if (component.Data.CustomId == "video_next" && _currentId < _videoData.Count)
+        else if (component.Data.CustomId == "video_next" && userState.CurrentVideoId < _videoData.Count)
         {
-            _currentId++;
+            userState.CurrentVideoId++;
         }
         else if (component.Data.CustomId == "video_bookmarked")
         {
@@ -153,22 +179,22 @@ class Program
         else if (component.Data.CustomId == "video_bookmark")
         {
             // When the user clicks "Bookmark"
-            var bookmarkUrl = _videoData[_currentId];  // Get the URL for the current video
+            var bookmarkUrl = _videoData[userState.CurrentVideoId];  // Get the URL for the current video
             var modifiedUrl = bookmarkUrl.Replace("www.youtube.com", "inv.nadeko.net");
 
             // Save the current state to persist the video ID
-            await SaveStateAsync();
+            SaveUserState(userId, userState.CurrentVideoId);
 
             // Check if the video is already bookmarked
             var existingBookmarks = LoadBookmarks();
-            if (existingBookmarks.Any(b => b.VideoId == _currentId))
+            if (existingBookmarks.Any(b => b.VideoId == userState.CurrentVideoId))
             {
                 await component.RespondAsync("Este video ya está guardado.", ephemeral: true);
                 return;  // Skip saving if the video is already bookmarked
             }
 
             // Save the bookmark to the CSV
-            SaveBookmarkToCsv(_currentId, modifiedUrl);
+            SaveBookmarkToCsv(userState.CurrentVideoId, modifiedUrl);
 
             // Create the components with a disabled "⭐ Guardado" button and YouTube link button
             var originalYoutubeUrl = modifiedUrl.Replace("inv.nadeko.net", "www.youtube.com");
@@ -179,7 +205,7 @@ class Program
                 .Build();
 
             // Send the message with the bookmark components
-            await component.Channel.SendMessageAsync($"**Video {_currentId}:**\n{modifiedUrl}", components: bookmarkComponents);
+            await component.Channel.SendMessageAsync($"**Video {userState.CurrentVideoId}:**\n{modifiedUrl}", components: bookmarkComponents);
 
             // Send a duplicated message with the "Back", "Next", and "Bookmark" buttons
             var navigationComponents = new ComponentBuilder()
@@ -188,16 +214,16 @@ class Program
                 .WithButton("⭐ Guardar", "video_bookmark", ButtonStyle.Secondary)
                 .Build();
 
-            await component.RespondAsync($"**Video {_currentId}:**\n{modifiedUrl}", components: navigationComponents, ephemeral: true);
+            await component.RespondAsync($"**Video {userState.CurrentVideoId}:**\n{modifiedUrl}", components: navigationComponents, ephemeral: true);
             return;
         }
 
         // Default case for handling back, next, or other button presses
-        var defaultUrl = _videoData[_currentId];  // Get the default URL
+        var defaultUrl = _videoData[userState.CurrentVideoId];  // Get the default URL
         var modifiedUrlDefault = defaultUrl.Replace("www.youtube.com", "inv.nadeko.net");
 
         // Save the current state to persist the video ID
-        await SaveStateAsync();
+        SaveUserState(userId, userState.CurrentVideoId);
 
         // Send the updated message with the navigation buttons
         var navigationButtons = new ComponentBuilder()
@@ -208,7 +234,7 @@ class Program
 
         await component.UpdateAsync(msg =>
         {
-            msg.Content = $"**Video {_currentId}:**\n{modifiedUrlDefault}";
+            msg.Content = $"**Video {userState.CurrentVideoId}:**\n{modifiedUrlDefault}";
             msg.Components = navigationButtons;
         });
     }
