@@ -125,7 +125,11 @@ class Program
     {
         if (command.CommandName == "encender")
         {
-            var originalUrl = _videoData[_currentId];
+            var userId = command.User.Id;
+            var userStates = LoadUserStates();
+            var userState = userStates.FirstOrDefault(s => s.UserId == userId) ?? new UserState { UserId = userId, CurrentVideoId = 1 };
+            
+            var originalUrl = _videoData[userState.CurrentVideoId];
             var modifiedUrl = originalUrl.Replace("www.youtube.com", "inv.nadeko.net");
 
             var components = new ComponentBuilder()
@@ -156,13 +160,13 @@ class Program
         var userState = userStates.FirstOrDefault(s => s.UserId == userId) ?? new UserState { UserId = userId, CurrentVideoId = 1 };
         string messageContent;
 
-        if (component.Data.CustomId == "video_back" && _currentId > 1)
+        if (component.Data.CustomId == "video_back" && userState.CurrentVideoId > 1)
         {
-            _currentId--;
+            userState.CurrentVideoId--;
         }
-        else if (component.Data.CustomId == "video_next" && _currentId < _videoData.Count)
+        else if (component.Data.CustomId == "video_next" && userState.CurrentVideoId < _videoData.Count)
         {
-            _currentId++;
+            userState.CurrentVideoId++;
         }
         else if (component.Data.CustomId == "video_bookmarked")
         {
@@ -212,7 +216,7 @@ class Program
         }
 
         // Default case for handling back, next, or other button presses
-        var defaultUrl = _videoData[_currentId];  // Get the default URL
+        var defaultUrl = _videoData[userState.CurrentVideoId];  // Get the default URL
         var modifiedUrlDefault = defaultUrl.Replace("www.youtube.com", "inv.nadeko.net");
 
         // Save the current state to persist the video ID
@@ -227,7 +231,7 @@ class Program
 
         await component.UpdateAsync(msg =>
         {
-            msg.Content = $"**Video {_currentId}:**\n{modifiedUrlDefault}";
+            msg.Content = $"**Video {userState.CurrentVideoId}:**\n{modifiedUrlDefault}";
             msg.Components = navigationButtons;
         });
     }
