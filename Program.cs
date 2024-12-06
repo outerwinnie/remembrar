@@ -74,7 +74,6 @@ class Program
             }
 
             // Wait for 3 hours
-            Console.WriteLine($"[SyncTask] Syncing state to file at {DateTime.Now}");
             await Task.Delay(TimeSpan.FromMinutes(2));
         }
     }
