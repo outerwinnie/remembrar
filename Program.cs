@@ -24,6 +24,7 @@ class Program
     private string _youtubeCsv;
     private string _guildId;
     private string _bookmarkedVideos;
+    private List<UserState> _userStateCache;
     private int _currentId = 1;  // Start at ID 1
 
     public static Task Main(string[] args) => new Program().MainAsync();
@@ -53,29 +54,49 @@ class Program
         await _client.StartAsync();
 
         LoadVideoData();
+        StartSyncTaskAsync();
 
         await Task.Delay(-1);  // Keep the bot running
     }
+    
+    public async Task StartSyncTaskAsync()
+    {
+        while (true)
+        {
+            try
+            {
+                Console.WriteLine($"[SyncTask] Syncing state to file at {DateTime.Now}");
+                SyncStateToFile();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SyncTask] Error syncing state: {ex.Message}");
+            }
 
+            // Wait for 3 hours
+            Console.WriteLine($"[SyncTask] Syncing state to file at {DateTime.Now}");
+            await Task.Delay(TimeSpan.FromMinutes(2));
+        }
+    }
+    
     private void SaveUserState(ulong userId, int videoId)
     {
-        Console.WriteLine($"Cheking user state for {userId}, to save...");
-        List<UserState> userStates = LoadUserStates();
-        var existingState = userStates.FirstOrDefault(s => s.UserId == userId);
-
+        var existingState = _userStateCache.FirstOrDefault(s => s.UserId == userId);
         if (existingState != null)
         {
             existingState.CurrentVideoId = videoId;
         }
         else
         {
-            userStates.Add(new UserState { UserId = userId, CurrentVideoId = videoId });
+            _userStateCache.Add(new UserState { UserId = userId, CurrentVideoId = videoId });
         }
-        
-        Console.WriteLine("Saving user state...");
+    }
+    
+    private void SyncStateToFile()
+    {
         using var writer = new StreamWriter(_stateFilePath);
         using var csvWriter = new CsvWriter(writer, CultureInfo.InvariantCulture);
-        csvWriter.WriteRecords(userStates);
+        csvWriter.WriteRecords(_userStateCache);
     }
 
     private List<UserState> LoadUserStates()
