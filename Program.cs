@@ -2,12 +2,17 @@ using Discord;
 using Discord.WebSocket;
 using CsvHelper;
 using System.Globalization;
-using System.Linq;
 
 public class Bookmark
 {
     public int VideoId { get; set; }
     public string Url { get; set; }
+}
+
+public class UserState
+{
+    public ulong UserId { get; set; }
+    public int CurrentVideoId { get; set; }
 }
 
 class Program
@@ -42,7 +47,7 @@ class Program
         _bookmarkedVideos = Environment.GetEnvironmentVariable("BOOKMARKED_VIDEOS") ?? throw new InvalidOperationException();
 
         // Load saved video ID state
-        LoadState();
+        //LoadState();
 
         await _client.LoginAsync(TokenType.Bot, _discordToken);
         await _client.StartAsync();
@@ -52,23 +57,32 @@ class Program
         await Task.Delay(-1);  // Keep the bot running
     }
 
-    private async Task SaveStateAsync()
+    private void SaveUserState(ulong userId, int videoId)
     {
-        Console.WriteLine("Saving state...");
-        await File.WriteAllTextAsync(_stateFilePath, _currentId.ToString());
+        List<UserState> userStates = LoadUserStates();
+        var existingState = userStates.FirstOrDefault(s => s.UserId == userId);
+
+        if (existingState != null)
+        {
+            existingState.CurrentVideoId = videoId;
+        }
+        else
+        {
+            userStates.Add(new UserState { UserId = userId, CurrentVideoId = videoId });
+        }
+
+        using var writer = new StreamWriter(_stateFilePath);
+        using var csvWriter = new CsvWriter(writer, CultureInfo.InvariantCulture);
+        csvWriter.WriteRecords(userStates);
     }
 
-    private void LoadState()
+    private List<UserState> LoadUserStates()
     {
-        if (File.Exists(_stateFilePath))
-        {
-            var content = File.ReadAllText(_stateFilePath);
-            if (int.TryParse(content, out int savedId))
-            {
-                Console.WriteLine("Loading state...");
-                _currentId = savedId;
-            }
-        }
+        if (!File.Exists(_stateFilePath)) return new List<UserState>();
+
+        using var reader = new StreamReader(_stateFilePath);
+        using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
+        return csv.GetRecords<UserState>().ToList();
     }
 
     private void LoadVideoData()
@@ -135,6 +149,9 @@ class Program
 
     private async Task ButtonExecuted(SocketMessageComponent component)
     {
+        var userId = component.User.Id;
+        var userStates = LoadUserStates();
+        var userState = userStates.FirstOrDefault(s => s.UserId == userId) ?? new UserState { UserId = userId, CurrentVideoId = 1 };
         string messageContent;
 
         if (component.Data.CustomId == "video_back" && _currentId > 1)
@@ -157,7 +174,7 @@ class Program
             var modifiedUrl = bookmarkUrl.Replace("www.youtube.com", "inv.nadeko.net");
 
             // Save the current state to persist the video ID
-            await SaveStateAsync();
+            SaveUserState(userId, userState.CurrentVideoId);
 
             // Check if the video is already bookmarked
             var existingBookmarks = LoadBookmarks();
@@ -197,7 +214,7 @@ class Program
         var modifiedUrlDefault = defaultUrl.Replace("www.youtube.com", "inv.nadeko.net");
 
         // Save the current state to persist the video ID
-        await SaveStateAsync();
+        SaveUserState(userId, userState.CurrentVideoId);
 
         // Send the updated message with the navigation buttons
         var navigationButtons = new ComponentBuilder()
