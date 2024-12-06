@@ -59,6 +59,7 @@ class Program
 
     private void SaveUserState(ulong userId, int videoId)
     {
+        Console.WriteLine($"Cheking user state for {userId}, to save...");
         List<UserState> userStates = LoadUserStates();
         var existingState = userStates.FirstOrDefault(s => s.UserId == userId);
 
