@@ -176,7 +176,7 @@ class Program
         else if (component.Data.CustomId == "video_bookmark")
         {
             // When the user clicks "Bookmark"
-            var bookmarkUrl = _videoData[_currentId];  // Get the URL for the current video
+            var bookmarkUrl = _videoData[userState.CurrentVideoId];  // Get the URL for the current video
             var modifiedUrl = bookmarkUrl.Replace("www.youtube.com", "inv.nadeko.net");
 
             // Save the current state to persist the video ID
@@ -184,14 +184,14 @@ class Program
 
             // Check if the video is already bookmarked
             var existingBookmarks = LoadBookmarks();
-            if (existingBookmarks.Any(b => b.VideoId == _currentId))
+            if (existingBookmarks.Any(b => b.VideoId == userState.CurrentVideoId))
             {
                 await component.RespondAsync("Este video ya está guardado.", ephemeral: true);
                 return;  // Skip saving if the video is already bookmarked
             }
 
             // Save the bookmark to the CSV
-            SaveBookmarkToCsv(_currentId, modifiedUrl);
+            SaveBookmarkToCsv(userState.CurrentVideoId, modifiedUrl);
 
             // Create the components with a disabled "⭐ Guardado" button and YouTube link button
             var originalYoutubeUrl = modifiedUrl.Replace("inv.nadeko.net", "www.youtube.com");
@@ -202,7 +202,7 @@ class Program
                 .Build();
 
             // Send the message with the bookmark components
-            await component.Channel.SendMessageAsync($"**Video {_currentId}:**\n{modifiedUrl}", components: bookmarkComponents);
+            await component.Channel.SendMessageAsync($"**Video {userState.CurrentVideoId}:**\n{modifiedUrl}", components: bookmarkComponents);
 
             // Send a duplicated message with the "Back", "Next", and "Bookmark" buttons
             var navigationComponents = new ComponentBuilder()
@@ -211,7 +211,7 @@ class Program
                 .WithButton("⭐ Guardar", "video_bookmark", ButtonStyle.Secondary)
                 .Build();
 
-            await component.RespondAsync($"**Video {_currentId}:**\n{modifiedUrl}", components: navigationComponents, ephemeral: true);
+            await component.RespondAsync($"**Video {userState.CurrentVideoId}:**\n{modifiedUrl}", components: navigationComponents, ephemeral: true);
             return;
         }
 
