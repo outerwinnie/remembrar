@@ -139,7 +139,7 @@ class Program
                 .Build();
 
             // Add newline before the link
-            var messageContent = $"**Video {_currentId}:**\n{modifiedUrl}";
+            var messageContent = $"**Video {userState.CurrentVideoId}:**\n{modifiedUrl}";
 
             await command.RespondAsync(messageContent, components: components, ephemeral:true);
         }
