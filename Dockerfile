@@ -34,6 +34,7 @@ ENV YOUTUBE_CSV="youtube_videos.csv"
 ENV GUILD_ID=""
 ENV VIDEO_PROGRESS="video_progress.csv"
 ENV BOOKMARKED_VIDEOS="bookmarked_videos.csv"
+ENV THREAD_ID=""
 
 # Expose port if necessary (optional for Discord bots)
 # EXPOSE 80
