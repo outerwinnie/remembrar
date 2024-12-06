@@ -50,9 +50,6 @@ class Program
         _bookmarkedVideos = Environment.GetEnvironmentVariable("BOOKMARKED_VIDEOS") ?? throw new InvalidOperationException();
         _threadId = Convert.ToUInt64(Environment.GetEnvironmentVariable("THREAD_ID") ?? throw new InvalidOperationException());
 
-        // Load saved video ID state
-        //LoadState();
-
         await _client.LoginAsync(TokenType.Bot, _discordToken);
         await _client.StartAsync();
 
@@ -209,6 +206,7 @@ class Program
             var thread = channel.Threads.FirstOrDefault(t => t.Id == _threadId) as SocketThreadChannel;
             if (thread == null)
             {
+                Console.WriteLine(thread.Id);
                 Console.WriteLine("[Bookmark] Thread not found.");
                 return;
             }
