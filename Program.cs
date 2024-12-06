@@ -70,7 +70,8 @@ class Program
         {
             userStates.Add(new UserState { UserId = userId, CurrentVideoId = videoId });
         }
-
+        
+        Console.WriteLine("Saving user state...");
         using var writer = new StreamWriter(_stateFilePath);
         using var csvWriter = new CsvWriter(writer, CultureInfo.InvariantCulture);
         csvWriter.WriteRecords(userStates);
@@ -82,6 +83,7 @@ class Program
 
         using var reader = new StreamReader(_stateFilePath);
         using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
+        Console.WriteLine("Loading user states...");
         return csv.GetRecords<UserState>().ToList();
     }
 
